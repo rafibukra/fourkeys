@@ -24,9 +24,6 @@ module "fourkeys_images" {
   project_id  = var.project_id
   enable_apis = var.enable_apis
   parsers     = var.parsers
-  depends_on = [
-    google_project_service.fourkeys_services
-  ]
 }
 
 module "foundation" {
