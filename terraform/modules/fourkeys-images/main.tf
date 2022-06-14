@@ -1,14 +1,14 @@
 locals {
-    services = var.enable_apis ? [
+  services = var.enable_apis ? [
     "cloudbuild.googleapis.com"
   ] : []
 }
 
 resource "google_project_service" "images_services" {
-  project                    = var.project_id
-  for_each                   = toset(local.services)
-  service                    = each.value
-  disable_on_destroy         = false
+  project            = var.project_id
+  for_each           = toset(local.services)
+  service            = each.value
+  disable_on_destroy = false
 }
 
 module "gcloud_build_dashboard" {
@@ -41,4 +41,7 @@ module "gcloud_build_event_handler" {
   create_cmd_body        = "builds submit ${path.module}/files/event_handler --tag=gcr.io/${var.project_id}/event-handler --project=${var.project_id}"
   destroy_cmd_entrypoint = "gcloud"
   destroy_cmd_body       = "container images delete gcr.io/${var.project_id}/event-handler --quiet"
+  module_depends_on = [
+    google_project_service.images_services
+  ]
 }
