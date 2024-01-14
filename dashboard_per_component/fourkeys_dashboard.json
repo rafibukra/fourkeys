@@ -24,7 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 2,
-  "id": 2,
+  "id": 3,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -118,7 +118,7 @@
           "location": "EU",
           "project": "sap-picpcore-gcp-dev17",
           "rawQuery": true,
-          "rawSql": "SELECT day, floor(deploy_success/total*100) success_rate\nFROM\n(\nSELECT * FROM (\nSELECT  count(*) as deploy_success, TIMESTAMP_TRUNC(time_created, DAY) AS day_1,\nFROM `four_keys.events_raw` where  event_type = \"deployment_status\" and JSON_EXTRACT_SCALAR(metadata, '$.deployment_status.state') = \"success\"\nGROUP BY day_1\n) success\nINNER JOIN \n(\nSELECT  count(*) as total, TIMESTAMP_TRUNC(time_created, DAY) AS day,\nFROM `four_keys.events_raw` where  event_type = \"deployment_status\"\nGROUP BY day\n) total ON success.DAY_1= total.DAY\n) GOOD order by day desc\n\n",
+          "rawSql": "SELECT day, floor(deploy_success/total*100) success_rate\nFROM\n(\nSELECT * FROM (\nSELECT  count(*) as deploy_success, TIMESTAMP_TRUNC(time_created, DAY) AS day_1,JSON_EXTRACT_SCALAR(metadata, '$.repository.name') as repo_1,\nFROM `four_keys.events_raw` where  event_type = \"deployment_status\" and JSON_EXTRACT_SCALAR(metadata, '$.deployment_status.state') = \"success\"\nGROUP BY repo_1, day_1\n) success\nINNER JOIN \n(\nSELECT  count(*) as total, TIMESTAMP_TRUNC(time_created, DAY) AS day,JSON_EXTRACT_SCALAR(metadata, '$.repository.name') as repo\nFROM `four_keys.events_raw` where  event_type = \"deployment_status\"\nGROUP BY repo, day\n) total ON success.DAY_1= total.DAY and success.repo_1 = total.repo\n) GOOD \nWHERE repo = \"$component\"\norder by day desc",
           "refId": "A",
           "sql": {
             "columns": [
@@ -231,7 +231,7 @@
           "location": "EU",
           "project": "gglobo-deployment-frq-hdg-prd",
           "rawQuery": true,
-          "rawSql": "SELECT\n day,\n IFNULL(ANY_VALUE(med_time_to_change)/60, 0) AS median_time_to_change, # Hours\nFROM (\n SELECT\n  d.deploy_id,\n  TIMESTAMP_TRUNC(d.time_created, DAY) AS day,\n  PERCENTILE_CONT(\n  IF(TIMESTAMP_DIFF(d.time_created, c.time_created, MINUTE) > 0, TIMESTAMP_DIFF(d.time_created, c.time_created, MINUTE), NULL), # Ignore automated pushes\n  0.5) # Median\n  OVER (PARTITION BY TIMESTAMP_TRUNC(d.time_created, DAY)) AS med_time_to_change, # Minutes\n FROM four_keys.deployments d, d.changes\n LEFT JOIN four_keys.changes c ON changes = c.change_id\n)\nGROUP BY day\nORDER BY day",
+          "rawSql": "SELECT\n day,\n IFNULL(ANY_VALUE(med_time_to_change)/60, 0) AS median_time_to_change, # Hours,\n repo\nFROM (\n SELECT\n  d.deploy_id,\n  TIMESTAMP_TRUNC(d.time_created, DAY) AS day,\n  PERCENTILE_CONT(\n  IF(TIMESTAMP_DIFF(d.time_created, c.time_created, MINUTE) > 0, TIMESTAMP_DIFF(d.time_created, c.time_created, MINUTE), NULL), # Ignore automated pushes\n  0.5) # Median\n  OVER (PARTITION BY TIMESTAMP_TRUNC(d.time_created, DAY)) AS med_time_to_change, # Minutes\n  repo\n FROM four_keys.deployments_per_component d, d.changes\n LEFT JOIN four_keys.changes c ON changes = c.change_id\n WHERE repo = \"$component\"\n)\nGROUP BY day, repo\nORDER BY day desc",
           "refId": "A",
           "sql": {
             "columns": [
@@ -1025,9 +1025,9 @@
     "list": [
       {
         "current": {
-          "selected": false,
-          "text": "provisioning-service",
-          "value": "provisioning-service"
+          "selected": true,
+          "text": "unified-account",
+          "value": "unified-account"
         },
         "datasource": {
           "type": "grafana-bigquery-datasource",
@@ -1045,7 +1045,7 @@
           "location": "EU",
           "project": "sap-picpcore-gcp-dev17",
           "rawQuery": true,
-          "rawSql": "SELECT  JSON_VALUE(metadata,'$.repository.name') component_name FROM `sap-picpcore-gcp-dev17.four_keys.events_raw` group by component_name",
+          "rawSql": "SELECT JSON_VALUE(metadata,'$.repository.name') as component_name\nFROM `four_keys.events_raw`\nWHERE JSON_VALUE(metadata,'$.repository.name') is not null\ngroup by component_name",
           "refId": "tempvar",
           "sql": {
             "columns": [
@@ -1074,7 +1074,7 @@
     ]
   },
   "time": {
-    "from": "now-7d",
+    "from": "now-90d",
     "to": "now"
   },
   "timepicker": {
@@ -1107,6 +1107,6 @@
   "timezone": "utc",
   "title": "Four Keys Per Component",
   "uid": "yVtwoQ4nkd",
-  "version": 2,
+  "version": 4,
   "weekStart": ""
 }
